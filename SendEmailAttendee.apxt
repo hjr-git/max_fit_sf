@@ -1,0 +1,42 @@
+trigger SendEmailAttendee on Event_Attendee__c (after insert) {
+    String emailBody;
+    String emailSubject;
+    Event__c event = new Event__c();
+    Attendees__c att = new Attendees__c();
+	// Get eventAttendee object with event & attendee object
+    List<ID> listEvents = new List<ID>();
+    List<ID> listAttendees = new List<ID>();
+	for(Event_Attendee__c ea: Trigger.New){
+        listEvents.add(ea.event__c);
+        listAttendees.add(ea.attendee__c);
+        // Get event info to fill email body
+        //for(ID evId : listEvents){
+            event = [select ID, name, Start_DateTime__c, Event_Organizer__r.name, Location__r.postal_code__c, 
+                     Location__r.street__c, Location__r.city__c,Location__r.country__c from Event__c where ID = :ea.event__c];
+        //}
+        // Get attendee's email
+        //for(ID attId : listAttendees){
+            att = [select ID, name, email__c from Attendees__c where ID = :ea.attendee__c];
+        //}
+        // Fill email body & subject with right info
+        if(event != null && att != null){
+            emailSubject = 'Pass for the ' + event.Name;
+            emailBody = 'Dear '+att.name+',' +
+                        'Thank you for registering for '+event.name+' which will be Organized on '+ event.Start_DateTime__c +
+                        ' & will be held in '+event.Location__r.postal_code__c+'. We are excited to have you, see you in the event.' +
+                        'Find the Google Map Location for the Event Here. (https://www.google.com/maps/place/'+event.Location__r.postal_code__c+') '+
+                        'Thanks, '+
+                        event.Event_Organizer__r.name;
+            System.debug('Event = '+event);
+            System.debug('Attendee = '+att);
+            try{
+            	EmailManager.sendMail(att.email__c, emailSubject, emailBody);
+            } catch(Exception e){
+                System.debug('Error : '+e);
+            }            
+        } else {
+            System.debug('The email is not sent due to a lack of information !');
+        }
+    }
+    
+}
